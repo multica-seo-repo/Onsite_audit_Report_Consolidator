@@ -1,6 +1,6 @@
 ---
 name: onsite-report-consolidator
-description: Use when consolidating explicitly selected onsite audit Excel reports into a unified Checklist workbook with matching detail worksheets, especially reports from the onsite checking skills. Excludes running audits, GSC series 7, Drive setup and uploads.
+description: Use when consolidating explicitly selected onsite audit Excel reports into a unified Checklist workbook with matching detail worksheets, especially reports from the onsite checking skills. Excludes running audits and GSC series 7; delegates final archival to the designated Google Drive Upload Agent.
 ---
 
 # Onsite Report Consolidator
@@ -38,7 +38,7 @@ Inspect first, then write an explicit `run.json`. The agent may accommodate colu
 ## Preserve results and traceability
 
 - Match by check ID, corroborated by filename topic/company/date, workbook columns and detail identifiers. Never identify a batch using date alone. Legacy names need per-source `legacy_name: true`; a conflicting modern prefix still fails.
-- The supplied template main sheet is `SEO Implementation Checklist`; the output main sheet is `(auto) SEO Checklist`. Rename only the output copy and rewrite its return links, formula references and named references. D = status, E = Findings, F = Instruction, G = detail navigation. Use `✔ / ✖ / NA / - / Human check`. Normalize source `√ / X`; preserve manual-review results as `Human check` (including source spelling `Human Check`), retain raw spelling and reasons in provenance. Extend onsite status dropdowns to allow `Human check`; preserve excluded GSC cells' original dropdown. Missing reports use `-` and `未检查` in Findings. **An explicit X remains ✖ even when its Findings describes incomplete evidence.** Consolidation does not redo the audit.
+- The supplied template main sheet is `SEO Implementation Checklist`; the output main sheet is `(auto) SEO Checklist`. Rename only the output copy and rewrite its return links, formula references and named references. D = status, E = Findings, F = Instruction, G = detail navigation. Use `✔ / ✖ / NA / - / Human check`. Normalize source `√ / X`; preserve manual-review results as `Human check` (including source spelling `Human Check`), retain raw spelling and reasons in provenance. Extend onsite status dropdowns to allow `Human check`; preserve excluded GSC cells' original dropdown. Missing reports use `-` and `Not checked` in Findings. **An explicit X remains ✖ even when its Findings describes incomplete evidence.** Consolidation does not redo the audit.
 - Preserve full source Findings/Instruction, including sample-only conclusions and limitations. Existing template links/formulas in data cells cause a stop rather than being overwritten. No grand total of unrelated issue types.
 - Count **recorded problem detail rows**, not generic populated rows, template examples, passed-check explanations, unique defects, images or pages. Human/NA/unknown checks have no confirmed numeric issue count. A passed source plus no issue records is reported as source-passed / zero recorded details, not independently verified zero defects. Reconcile explicit `N issue row(s)` claims to input details.
 - Reuse native detail worksheets and headers. Current combined `17 / 18 / 19 / 20` details route by `Item No.`; future split sheets route by their `17.1…` prefix, cross-checked against internal IDs. Fill only existing schema fields. Retain unmapped source fields, full original values and provenance in the validation sidecar without adding visible columns.
@@ -57,4 +57,85 @@ python -m unittest discover -s tests -v
 
 Before delivery, inspect populated worksheets at normal scale using a spreadsheet renderer or native Excel when available. Inspect status/Findings/instructions, split detail routing, links and representative counts. Report limitations honestly: structural checks do not prove Excel recalculation, clickable UI behavior or macOS execution. The supplied template already has Summary `#REF!`/missing-sheet references, Google-export placeholder formulas and Google heading anchors. Preserve and report these; do not invent scores to repair them. If the user requires an entirely error-free workbook, resolve that template repair scope before claiming it.
 
-Return the final workbook location, included/excluded reports, verification outcome and material warnings. This development repository is not evidence of a globally installed skill. Upload only through the separately available upload skill when authorized; retain its credential-path confirmation requirements.
+Return the final workbook location, included/excluded reports, verification outcome and material warnings. This development repository is not evidence of a globally installed skill. Dispatch final archival to the designated Google Drive Upload Agent as specified below; that agent owns authentication and upload operations.
+
+## Excel output language
+
+Write all generated Excel report narratives, analyses, findings, recommendations,
+report titles, worksheet names, table headers, chart labels and notes in English,
+regardless of the input or conversation language.
+
+Preserve original source evidence exactly, including Chinese keywords, page
+titles, descriptions, headings, quoted page content, URLs and paths. Chinese
+text in source-evidence fields is permitted. Do not translate, remove or rewrite
+evidence merely to make a workbook appear English-only. Use English for the
+generated explanations surrounding that evidence.
+
+Set report-generation language to English. If a reused configuration specifies
+Chinese, use an English run-specific setting without modifying the original
+input configuration. Prepare narrative fields in English before rendering.
+
+Before delivery, reopen every Excel workbook and inspect generated narrative
+and presentation fields for Chinese text; correct those fields and regenerate
+when needed. Inspect source-evidence fields separately and preserve their text.
+Do not apply a blanket Chinese-character removal or replacement to a workbook.
+Preserve audit logic, thresholds, result codes, evidence provenance and
+machine-readable field keys. This rule governs Excel deliverables and the
+narrative inputs used to build them; it does not require English chat replies
+or translation of internal documentation.
+
+During consolidation, inspect generated Findings, Instruction, Issue and other
+report narrative fields in every input workbook. If Chinese narrative remains,
+identify the workbook, worksheet and cells and obtain corrected English
+narrative before final delivery. Do not silently translate source-evidence
+columns or change audit conclusions. Apply the same check to the merged workbook.
+
+## Deliver and dispatch Google Drive archival
+
+After validating the consolidated workbook, attach the final versioned
+XLSX and its matching validation sidecar to the originating issue.
+Verify that both attachments are accessible.
+
+Resolve the designated Google Drive Upload Agent from the live workspace
+policy and current agent records. The consolidator must not perform
+Drive authentication, folder mapping or uploads itself.
+
+Read current holds and accessible archival authorization. Reuse verified
+standing authorization within its scope without requesting approval again.
+
+Prepare a Handover Note using the live policy's required fields. Include:
+the originating issue and project UUID, stable task identity and slug,
+selected attachment IDs, filenames, sizes, SHA-256 checksums, task-relative
+layout, verification results, material warnings and authorization reference.
+
+Dispatch through a supported Multica mechanism, such as an assigned
+upload issue in a status that queues the designated agent. Confirm actual
+assignment or queueing and record the upload issue/run reference.
+A Handover Note alone is not dispatch.
+
+The uploader resolves and verifies the project destination using its
+current instructions and skills, uploads only the selected deliverables,
+and records verified Drive links on the originating or linked upload issue.
+
+Reuse the delivery identity and prior receipts on retries. Do not create
+duplicate uploads or overwrite existing versions. Respect explicit holds.
+
+If inputs, authorization or dispatch are unavailable, preserve the
+completed attachments and report the precise blocker and minimum remedy.
+Do not rerun consolidation solely because archival is pending.
+
+Report workbook verification, attachment delivery, upload dispatch and
+verified Drive archival separately. Queued does not mean uploaded.
+
+## Default template availability in Multica
+
+The Multica text-file import may omit the binary default XLSX. First honor
+an explicit user template. Otherwise check the installed default asset.
+If absent, retrieve the original template from the verified origin repository
+multica-seo-repo/Onsite_audit_Report_Consolidator using Git blob
+fdd49f8be6c21907c69344735cc36e0067c45887 (379757 bytes), through available
+authorized GitHub access. Save it in the assigned task directory, validate
+its Git blob hash and XLSX readability, then set the manifest's template
+path explicitly. Do not write the downloaded file into a shared installation
+or change the workbook. Report a specific retrieval blocker if unavailable;
+never invent a replacement template or claim the missing asset is installed.

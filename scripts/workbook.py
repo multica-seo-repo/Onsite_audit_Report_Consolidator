@@ -367,7 +367,7 @@ def build(manifest_path):
                 if check['status']=='-':findings+='；来源状态：'+check['raw_status']
                 values=[check['status'],findings,check['instruction']]
             else:
-                values=['-','未检查：本次未提供该检查项报告。','']
+                values=['-','Not checked: no report was supplied for this check.','']
                 missing.append(ident)
             for col,value in zip([4,5,6],values):
                 c=put(main,r,col,value,touched)

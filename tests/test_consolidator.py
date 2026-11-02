@@ -176,7 +176,7 @@ class ConsolidationTests(unittest.TestCase):
         self.assertEqual(s['J2'].value,'=1+2')
         self.assertEqual(s['J2'].fill.fgColor.rgb,'00123456')
         self.assertEqual(s['D3'].value,'-')
-        self.assertIn('未检查',s['E3'].value)
+        self.assertIn('Not checked',s['E3'].value)
         self.assertEqual(w['11. Sitemap']['C4'].value,'preserve template note')
         self.assertEqual(openpyxl.load_workbook(self.template)['SEO Implementation Checklist']['D6'].value,None)
 
@@ -343,7 +343,7 @@ class ConsolidationTests(unittest.TestCase):
         row=s.max_row;dv=DataValidation(type='list',formula1='"✔,✖,NA,-"');s.add_data_validation(dv);dv.add(s.cell(row,4));w.save(self.template)
         self.report();out=self.build();s=openpyxl.load_workbook(out)[OUTPUT_MAIN]
         self.assertEqual(s.cell(row,4).value,'-')
-        self.assertIn('未检查',s.cell(row,5).value)
+        self.assertIn('Not checked',s.cell(row,5).value)
 
     def test_named_extra_checklist_field_survives(self):
         p=self.report()
@@ -373,7 +373,7 @@ class ConsolidationTests(unittest.TestCase):
         out=self.build();w=openpyxl.load_workbook(out);s=w[OUTPUT_MAIN]
         self.assertEqual(s['D8'].value,'Human check')
         self.assertEqual(s['D3'].value,'-')
-        self.assertIn('未检查',s['E3'].value)
+        self.assertIn('Not checked',s['E3'].value)
         self.assertIn('问题数量未确认',s['E8'].value)
         human_rules=[v for v in s.data_validations.dataValidation if 'D8' in v.sqref]
         self.assertEqual(len(human_rules),1)
