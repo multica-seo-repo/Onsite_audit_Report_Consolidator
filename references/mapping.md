@@ -47,7 +47,7 @@ All observed Checklists are header row 1 with `Item No.`, `Item Name`, `Initial 
 
 Issue tables use header row 1. Read IDs from Item No., registered embedded-ID columns, validated child-ID sheet prefixes or exact registered sheet aliases. All available IDs must agree. Sitemap uses a leading ID in Sitemaps, whose full value is a finding label. URLs Example holds actual URL evidence: 11.7 X uses one URL per row; other sitemap checks may use newline-separated URLs or N/A where the producer permits no affected URL. Preserve original text and row counts. Only single-URL cells get native URL hyperlinks.
 
-Current content reports use X-only split sheets and a space after the filename range. Register 18. Descriptions - Missing as 18.1. Full Checklist coverage is required; non-X split detail tabs may be absent, but every X needs nonempty detail evidence. Retain support for existing combined layouts and underscore filenames. Reject overlapping tables, conflicting IDs and unmapped sheets. Do not extend optional-table behavior to unrelated producers. Record omitted tables distinctly from observed empty tables in provenance.
+Current content reports use X-only split sheets and a space after the filename range. Register 18. Descriptions - Missing as 18.1. Full Checklist coverage is required; non-X split detail tabs may be absent, but every X needs nonempty detail evidence. Retain support for existing combined layouts and underscore filenames. Reject overlapping tables, conflicting IDs and unmapped sheets. Optional-table behavior is limited to registered content layouts and the pagination/hreflang contracts below; all other topics retain their existing requirements. Record omitted tables distinctly from observed empty tables in provenance.
 
 ## Destination contract
 
@@ -72,3 +72,6 @@ Input results remain authoritative. This consolidator does not adjudicate SEO ru
 ## Current verification limits
 
 The real sample covers eight onsite reports, 37 check results and 1,086 problem-detail rows. GSC is excluded. The template has known inherited broken Summary formulas and Google-specific formulas/anchors. The script checks preservation, requested writes, URL links and workbook navigation; it does not recalculate those original formulas or promise their Excel compatibility.
+
+
+Pagination and hreflang always require complete selected Checklist coverage. Their registered producers create 14. Pagination or 15. HREFLANG only when at least one result is X. A Checklist-only report with no X is valid; preserve pass, N/A, Human check and other supported non-X statuses and all evidence limitations without reclassifying them. Record absent tables as omitted by producer contract, separately from observed header-only tables. Every X still requires nonempty correctly identified detail evidence. An absent or empty X table and missing Checklist rows remain errors. Existing registered combined-sheet aliases and populated-table validation remain unchanged. Zero recorded rows is not a confirmed issue count for Human check, N/A or unknown results.

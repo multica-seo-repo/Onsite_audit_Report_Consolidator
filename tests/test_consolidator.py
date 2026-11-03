@@ -605,3 +605,40 @@ class CurrentProducerCompatibilityTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
+class ConditionalTests(unittest.TestCase):
+    setUp=ConsolidationTests.setUp
+    save=ConsolidationTests.save
+    read=ConsolidationTests.read
+    build=ConsolidationTests.build
+
+    def test_conditional_contracts(self):
+        for topic,series,count,sheet in [('pagination_audit',14,6,'14. Pagination'),('hreflang_audit',15,3,'15. HREFLANG')]:
+            name=f'{series}.1-{series}.{count}_Example Co_{topic}_2026-10-13.xlsx'
+            self.manifest['sources']=[{'file':name,'topic':topic,'date':'2026-10-13'}]
+            for mode in ['pass','human','mixed','missing','x_absent','x_empty','x_valid','x_missing_one','pass_details','header_only']:
+                with self.subTest(topic=topic,mode=mode):
+                    w=openpyxl.Workbook();s=w.active;s.title='Checklist';s.append(['Item No.','Item Name','Check Result','Findings','Instruction'])
+                    for i in range(1,count+1):
+                        if mode=='missing' and i==count:continue
+                        status='√' if mode=='pass' else 'Human check'
+                        if mode=='mixed':status='√' if i==4 else 'Human check'
+                        if mode.startswith('x') and i==1:status='X'
+                        if mode=='x_missing_one' and i==2:status='X'
+                        if mode=='pass_details' and i==1:status='√'
+                        s.append([f'{series}.{i}','Question',status,'Original finding','Original instruction'])
+                    if mode in ['x_empty','x_valid','x_missing_one','pass_details','header_only']:
+                        ds=w.create_sheet(sheet);ds.append(['Item No.','Address','Issue','Instructions'])
+                        if mode in ['x_valid','x_missing_one','pass_details']:ds.append([f'{series}.1','https://www.example.com/a','Finding','Fix'])
+                    w.save(self.folder/name)
+                    if mode in ['missing','x_absent','x_empty','x_missing_one','pass_details']:
+                        with self.assertRaises(ValueError):self.read()
+                    else:
+                        r=self.read();self.assertEqual(len(r['checks']),count)
+                        for c in r['checks'].values():self.assertEqual(c['findings'],'Original finding')
+                        self.assertEqual(r['checks'][f'{series}.1']['detail_table_state'],'observed' if mode in ['x_valid','header_only'] else 'omitted by producer contract')
+                        if mode=='mixed':
+                            self.manifest['template']=str(ROOT/'assets/Onsite Checklist - TEMPLATE.xlsx')
+                            self.manifest['output_date']=f'2026-10-{series}'
+                            from workbook import verify
+                            self.assertEqual(verify(self.build())['checks'],count)
