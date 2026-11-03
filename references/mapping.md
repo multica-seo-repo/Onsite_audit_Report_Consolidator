@@ -41,11 +41,13 @@ Old filenames lacking numeric prefixes need per-source `"legacy_name": true`. Co
 | headings_audit | 19.1–19.3 | 19. Heading |
 | images_audit | 20.1–20.2 | 20. Image |
 
-`https_audit` reserves destination 9.1–9.3 and a provisional source layout; no real HTTPS source was supplied for this version. Do not claim its schema was verified. GSC is deliberately absent. Pagination/Hreflang filenames accept both `onsite_pagination_audit` / `onsite_hreflang_audit` and their shorter registered tokens.
+The current HTTPS producer uses Checklist and 9. Implement HTTPS Protocol. Its detail headers are Issue Type, Address, Related URL, Findings and Instructions. Issue Type begins with 9.1, 9.2 or 9.3. Address is a site URL; optional Related URL is a resource URL for 9.2 and a site URL for 9.1/9.3. An empty table is supported. Unsupported combined statuses remain an explicit error. GSC is deliberately absent. Pagination/Hreflang filenames accept both `onsite_pagination_audit` / `onsite_hreflang_audit` and their shorter registered tokens.
 
 All observed Checklists are header row 1 with `Item No.`, `Item Name`, `Initial Check` or `Check Result`, `Findings`, `Instruction`. Robots instead embeds `10.x` in `Check`, with `Result`, `Findings`, `Instruction`. Headers match registered aliases case-insensitively after trimming/collapsing spaces; column order may vary. Duplicate matching aliases stop.
 
-All observed issue tables have header row 1. Combined tables identify records by `Item No.`, or a leading check ID in `Issue`/`Issues`. Future split sheets begin with a validated child ID (e.g. `17.2 Page titles`); their rows may omit Item No. If it is present, it must agree. A header-only table is valid; an absent table is not equivalent to no issues.
+Issue tables use header row 1. Read IDs from Item No., registered embedded-ID columns, validated child-ID sheet prefixes or exact registered sheet aliases. All available IDs must agree. Sitemap uses a leading ID in Sitemaps, whose full value is a finding label. URLs Example holds actual URL evidence: 11.7 X uses one URL per row; other sitemap checks may use newline-separated URLs or N/A where the producer permits no affected URL. Preserve original text and row counts. Only single-URL cells get native URL hyperlinks.
+
+Current content reports use X-only split sheets and a space after the filename range. Register 18. Descriptions - Missing as 18.1. Full Checklist coverage is required; non-X split detail tabs may be absent, but every X needs nonempty detail evidence. Retain support for existing combined layouts and underscore filenames. Reject overlapping tables, conflicting IDs and unmapped sheets. Do not extend optional-table behavior to unrelated producers. Record omitted tables distinctly from observed empty tables in provenance.
 
 ## Destination contract
 
@@ -53,7 +55,7 @@ All observed issue tables have header row 1. Combined tables identify records by
 
 `main_sheet` identifies the input template sheet `SEO Implementation Checklist`; `output_main_sheet` is `(auto) SEO Checklist`, explicitly requested by the user. The full prefixed original title would exceed Excel's 31-character limit. Rename only the generated copy and update internal hyperlinks, formulas, named references and chart series references. Source workbooks and the bundled template retain their original sheet names.
 
-The output status vocabulary is `✔ / ✖ / NA / - / Human check`. Source `Human Check` normalizes only its capitalization. Manual checks retain their reason and unavailable issue count. The status dropdown is extended for onsite cells; series 7 keeps its original dropdown and values. Missing reports use `-` plus `未检查`, not Human check.
+The output status vocabulary is `✔ / ✖ / NA / - / Human check`. Source `Human Check` normalizes only its capitalization. Manual checks retain their reason and unavailable issue count. The status dropdown is extended for onsite cells; series 7 keeps its original dropdown and values. Missing reports use `-` plus `Not checked`, not Human check.
 
 Detail headers are row 3, except Robots row 4. Existing notes below headers are preserved; imports start below the last occupied row with a gap. Match existing headings to exact source headings first, then registered semantic aliases. Fill only these fields. Do not append columns, summary blocks or explanatory rows. Original source values, provenance and output row/cell mappings remain in the validation sidecar, including unmapped fields. Stop if an entire detail row maps to no existing field. Main G targets the first populated detail cell for its check, or the existing header for a check with no details. Detail A1 returns to the first corresponding Checklist B row. Exact targets are stored in navigation_links and checked after saving and during verify.
 

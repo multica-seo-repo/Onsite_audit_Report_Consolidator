@@ -249,6 +249,7 @@ def write_details(w,run,touched):
     detail_records={}
     evidence_cells=[]
     for name,checks in grouped.items():
+        topic=run['profile']['topics'][checks[0]['topic']]
         if name not in w.sheetnames:
             raise ValueError(f'missing destination worksheet; update explicit profile: {name}')
         ws=w[name]
@@ -264,7 +265,7 @@ def write_details(w,run,touched):
         for col,h in headers.items():
             choices=[f for f in all_fields if norm(f)==norm(h)]
             if not choices:
-                choices=[f for f in all_fields if canonical(f,run['profile'])==canonical(h,run['profile']) and not canonical(h,run['profile']).startswith('extra:')]
+                choices=[f for f in all_fields if canonical(f,run['profile'],topic)==canonical(h,run['profile'],topic) and not canonical(h,run['profile'],topic).startswith('extra:')]
             if choices:
                 mapping[col]=choices[0]
         occupied=[c.row for row in ws.iter_rows(min_row=header_row+1) for c in row if c.value is not None]
@@ -279,14 +280,16 @@ def write_details(w,run,touched):
                 output_cells=[]
                 for col,field in mapping.items():
                     value=detail['values'].get(field)
-                    is_url=canonical(field,run['profile']) in {'address','destination','sitemap'} or standalone_url(value)
+                    entries=detail.get('validated_urls',{}).get(field)
+                    is_url=(len(entries)==1 and bool(standalone_url(value))) if entries is not None else bool(standalone_url(value))
+                    if canonical(field,run['profile'],topic)=='sitemap_label':is_url=False
                     c=put(ws,rownum,col,value,touched,url=is_url);c.alignment=Alignment(vertical='top',wrap_text=True)
                     if value is not None:output_cells.append(c.coordinate)
                     if is_url and value is not None:evidence_cells.append([name,c.coordinate,str(value).strip()])
                 if not output_cells:
                     raise ValueError(f'no source detail fields map to existing template schema: {name}, check {check["id"]}')
                 if not detail_records[check['id']]:detail_locations[check['id']]=(name,output_cells[0])
-                detail_records[check['id']].append({'source_file':check['source_file'],'source_check':check['id'],'source_sheet':detail['source_sheet'],'source_row':detail['source_row'],'source_values':detail['values'],'output_sheet':name,'output_row':rownum,'output_cells':output_cells})
+                detail_records[check['id']].append({'source_file':check['source_file'],'source_check':check['id'],'source_sheet':detail['source_sheet'],'source_row':detail['source_row'],'source_values':detail['values'],'identity_fields':detail.get('identity_fields',[]),'validated_urls':detail.get('validated_urls',{}),'output_sheet':name,'output_row':rownum,'output_cells':output_cells})
                 fit_row(ws,rownum)
                 rownum+=1
         # Rebuild controlled navigation even if a template link/formula already exists.
@@ -404,6 +407,7 @@ def build(manifest_path):
         report['publication_method']=publish_no_replace(temp_path,output)
         report['navigation_links']=navigation_links
         for ident,check in run['checks'].items():
+            report['checks'][ident].update({'source_schema':check['source_schema'],'detail_table_state':check['detail_table_state']})
             report['checks'][ident].update({'detail_target':locations[ident],'details':detail_records[ident],'source_sheet':check['source_sheet'],'source_row':check['source_row'],'source_date':check['source_date'],'source_check_name':check['source_check_name'],'findings':check['findings'],'instruction':check['instruction'],'extra_checklist':check['extra_checklist']})
         try:
             with sidecar.open('x',encoding='utf-8') as f:json.dump(report,f,ensure_ascii=False,indent=2)

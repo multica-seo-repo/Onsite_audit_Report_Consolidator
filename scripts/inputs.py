@@ -61,11 +61,44 @@ def alias_column(headers, aliases, required=False):
     return found[0] if found else None
 
 
-def canonical(header, profile):
+def canonical(header, profile, topic=None):
+    overrides = (topic or {}).get('reader', {}).get('field_overrides', {})
+    for name, field in overrides.items():
+        if norm(header) == norm(name):
+            return field
     matches = [k for k, aliases in profile['field_aliases'].items() if norm(header) in {norm(a) for a in aliases}]
     if len(matches) > 1:
         raise ValueError(f'ambiguous field mapping {header}')
     return matches[0] if matches else 'extra:' + str(header)
+
+
+def url_entries(header, value, profile, topic, ident, hosts, asset_hosts):
+    """Return validated URLs, or None for a non-URL field. Never rewrite evidence."""
+    field = canonical(header, profile, topic)
+    rules = topic.get('reader', {}).get('url_cells', {})
+    rule = next((v for k, v in rules.items() if norm(k) == norm(header)), {})
+    if field not in {'address', 'destination', 'sitemap', 'related_url'}:
+        return None
+    if value is None or (value == '' and rule.get('optional')):
+        return []
+    text = str(value).strip()
+    if text == 'N/A' and 'na_except' in rule and ident not in rule['na_except']:
+        return []
+    entries = [v.strip() for v in text.replace('\r\n', '\n').split('\n') if v.strip()] if rule.get('multiline') else [text]
+    if not entries or (ident in rule.get('single_checks', []) and len(entries) != 1):
+        raise ValueError(f'invalid website URL count for {ident}/{header}')
+    allowed = hosts | asset_hosts if field == 'destination' or ident in rule.get('asset_checks', []) else hosts
+    for url in entries:
+        parsed = urlsplit(url)
+        if parsed.scheme not in {'http', 'https'} or not parsed.hostname or re.search(r'\s', url) or parsed.username or parsed.password:
+            raise ValueError(f'invalid website URL {url!r}')
+        try:
+            parsed.port
+        except ValueError as exc:
+            raise ValueError(f'invalid website URL {url!r}') from exc
+        if parsed.hostname not in allowed:
+            raise ValueError(f'URL host outside site_hosts: {parsed.hostname}')
+    return entries
 
 
 def relative_file(folder, name):
@@ -92,7 +125,7 @@ def ids_range(text):
 
 def filename_check(path, source, manifest, topic, ids):
     name = path.stem
-    prefix = re.match(r'^(\d+\.\d+(?:-\d+\.\d+)?)_(.+)$', name)
+    prefix = re.match(r'^(\d+\.\d+(?:-\d+\.\d+)?)[_ ](.+)$', name)
     if prefix:
         if set(ids_range(prefix[1])) != set(ids):
             raise ValueError(f'filename check coverage mismatch: {path.name}')
@@ -144,6 +177,7 @@ def read_run(manifest_path):
         if topic_name not in profile['topics']:
             raise ValueError(f'unknown/excluded topic (GSC is excluded): {topic_name}')
         topic = profile['topics'][topic_name]
+        reader = topic.get('reader', {})
         ids = src.get('checks', topic['ids'])
         if not isinstance(ids,list) or any(str(i).startswith('7.') for i in ids):
             raise ValueError('invalid check list; GSC series 7 is excluded')
@@ -189,6 +223,7 @@ def read_run(manifest_path):
         if set(local) != set(ids):
             raise ValueError(f'missing check coverage in {p.name}: {sorted(set(ids)-set(local))}')
         observed_detail = set()
+        schemas = {}
         identity_hosts = set()
         for ds in w:
             if ds == ws:
@@ -197,6 +232,10 @@ def read_run(manifest_path):
                 continue
             split_match = re.match(r'^(\d+\.\d+)(?=\s|$|[._-])', ds.title)
             split_id = split_match[1] if split_match else None
+            alias_id = reader.get('sheet_aliases', {}).get(ds.title)
+            if split_id and alias_id and split_id != alias_id:
+                raise ValueError(f'conflicting sheet identities: {ds.title}')
+            split_id = split_id or alias_id
             if split_id:
                 if split_id not in ids:
                     raise ValueError(f'out-of-scope detail sheet: {ds.title}')
@@ -212,14 +251,26 @@ def read_run(manifest_path):
                 raise ValueError(f'unmapped source sheet {p.name}/{ds.title}')
             dh = columns(ds)
             fields = {c.column:str(c.value) for c in ds[1] if c.value is not None}
+            schema = reader.get('schema', 'legacy')
+            if reader.get('optional_nonfailed_details') and not split_id:
+                schema = 'content-combined-legacy'
+            if reader.get('variant_header') and norm(reader['variant_header']) not in dh:
+                schema = 'https-legacy'
+            for covered_id in ([split_id] if split_id else ids):
+                schemas[covered_id] = schema
+            if norm(reader.get('variant_header', '')) in dh:
+                missing_headers = {norm(h) for h in reader['required_headers']} - set(dh)
+                if missing_headers:
+                    raise ValueError(f'missing required detail headers: {sorted(missing_headers)}')
             required=set(profile.get('required_detail_fields',{}).get(topic_name,[]))
-            missing_fields=required-{canonical(h,profile) for h in fields.values()}
+            missing_fields=required-{canonical(h,profile,topic) for h in fields.values()}
             if missing_fields:
                 raise ValueError(f'missing required detail column/field in {ds.title}: {sorted(missing_fields)}')
-            if not any(canonical(h,profile) in {'address','destination','sitemap'} for h in fields.values()):
+            if not any(canonical(h,profile,topic) in {'address','destination','sitemap'} for h in fields.values()):
                 raise ValueError(f'detail requires mapped URL column/header: {ds.title}')
             id_col = alias_column(dh, profile['field_aliases']['id'])
             issue_col = alias_column(dh, ['Issue','Issues'])
+            embedded_cols = [dh[norm(h)] for h in reader.get('embedded_id_headers', []) if norm(h) in dh]
             for row in ds.iter_rows(min_row=2):
                 if not any(c.value is not None for c in row):
                     continue
@@ -227,36 +278,48 @@ def read_run(manifest_path):
                     raise ValueError(f'populated cell under missing header: {ds.title}/{row[0].row}')
                 if any(c.data_type=='f' for c in row):
                     raise ValueError(f'source formula in detail {ds.title}/{row[0].row}')
+                identities = []
+                identity_fields = []
                 if id_col:
-                    ident = check_id(row[id_col-1].value)
-                elif issue_col:
+                    identities.append(check_id(row[id_col-1].value))
+                    identity_fields.append(fields[id_col])
+                for col in embedded_cols:
+                    identities.append(check_id(row[col-1].value, embedded=True))
+                    identity_fields.append(fields[col])
+                if issue_col:
                     try:
-                        ident = check_id(row[issue_col-1].value, embedded=True)
+                        identities.append(check_id(row[issue_col-1].value, embedded=True))
+                        identity_fields.append(fields[issue_col])
                     except ValueError:
-                        if not split_id:
+                        if not split_id and not identities:
                             raise ValueError(f'missing detail check identifier {ds.title}/{row[0].row}')
-                        ident = split_id
-                elif split_id:
-                    ident = split_id
-                else:
+                if split_id:
+                    identities.append(split_id)
+                    identity_fields.append('sheet_alias' if alias_id else 'sheet_prefix')
+                if not identities:
                     raise ValueError(f'detail row requires check identifier: {ds.title}/{row[0].row}')
+                if len(set(identities)) != 1:
+                    raise ValueError(f'detail check mismatch: conflicting identifiers: {ds.title}/{row[0].row}')
+                ident = identities[0]
                 if ident not in local or (split_id and ident!=split_id):
                     raise ValueError(f'detail check mismatch {ident} in {ds.title}')
                 values = {h:row[col-1].value for col,h in fields.items()}
+                validated_urls = {}
                 for h,v in values.items():
-                    if canonical(h,profile) in {'address','destination','sitemap'} and v is not None:
-                        url = str(v).strip()
-                        if not url.startswith(('http://','https://')) or not urlsplit(url).hostname or re.search(r'\s',url):
-                            raise ValueError(f'invalid website URL {url!r} in {ds.title}')
-                        host = urlsplit(url).hostname
-                        allowed = hosts | asset_hosts if canonical(h,profile)=='destination' else hosts
-                        if host not in allowed:
-                            raise ValueError(f'URL host outside site_hosts: {host}')
-                        identity_hosts.add(host)
-                local[ident]['details'].append({'values':values,'source_sheet':ds.title,'source_row':row[0].row})
-        if not observed_detail.issuperset(ids):
-            raise ValueError(f'missing detail sheet coverage: {sorted(set(ids)-observed_detail)}')
+                    entries = url_entries(h,v,profile,topic,ident,hosts,asset_hosts)
+                    if entries is not None:
+                        validated_urls[h] = entries
+                        identity_hosts.update(urlsplit(url).hostname for url in entries)
+                        if len(entries) > 1:
+                            warnings.append(f'{src["file"]}/{ds.title}/{row[0].row}/{h}: multiple URLs preserved as wrapped text; Excel supports one native hyperlink per cell')
+                local[ident]['details'].append({'values':values,'source_sheet':ds.title,'source_row':row[0].row,'identity_fields':identity_fields,'validated_urls':validated_urls})
+        missing_details = set(ids)-observed_detail
+        required_missing = {i for i in missing_details if not reader.get('optional_nonfailed_details') or local[i]['status']=='✖'}
+        if required_missing:
+            raise ValueError(f'missing detail sheet coverage: {sorted(required_missing)}')
         for ident,c in local.items():
+            c['source_schema'] = schemas.get(ident, reader.get('schema', 'legacy'))
+            c['detail_table_state'] = 'omitted by producer contract' if ident in missing_details else 'observed'
             count = len(c['details'])
             c['detail_count'] = count
             if c['status']=='✔' and count:
