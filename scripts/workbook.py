@@ -134,12 +134,12 @@ def validate_navigation(w,links):
 
 
 def evidence_label(check):
-    n=check['detail_count']
-    if check['status'] in {'-','NA','Human check'}:
-        return f'问题数量未确认；已提供明细 {n} 条'
-    if check['status']=='✔':
-        return '来源检查通过；已记录问题明细 0 条（不代表独立复核）'
-    return f'已记录问题明细 {n} 条（不代表唯一问题总数）'
+    n = check['detail_count']
+    if check['status'] in {'-', 'NA', 'Human check'}:
+        return f'Issue count unconfirmed; {n} detail row(s) supplied.'
+    if check['status'] == '✔':
+        return 'Source check passed; 0 problem detail rows recorded (not independently verified).'
+    return f'{n} problem detail row(s) recorded (not a count of unique issues).'
 
 
 def standalone_url(value):
@@ -366,8 +366,8 @@ def build(manifest_path):
             r=rows[ident]
             check=run['checks'].get(ident)
             if check:
-                findings=check['findings']+'\n[汇总] '+evidence_label(check)
-                if check['status']=='-':findings+='；来源状态：'+check['raw_status']
+                findings=check['findings']+'\n[Consolidation] '+evidence_label(check)
+                if check['status']=='-':findings+=' Source status: '+check['raw_status']
                 values=[check['status'],findings,check['instruction']]
             else:
                 values=['-','Not checked: no report was supplied for this check.','']

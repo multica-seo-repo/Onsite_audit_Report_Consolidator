@@ -36,6 +36,7 @@ Old filenames lacking numeric prefixes need per-source `"legacy_name": true`. Co
 | sitemap_audit | 11.1–11.9 | 11. Sitemap |
 | pagination_audit | 14.1–14.6 | 14. Pagination |
 | hreflang_audit | 15.1–15.3 | 15. HREFLANG |
+| robots_meta_tags_audit | 12.1–12.3 | 12. Robots meta tags (conditional) |
 | page_titles_audit | 17.1–17.4 | 17. Page Title |
 | meta_descriptions_audit | 18.1–18.3 | 18. meta_description |
 | headings_audit | 19.1–19.3 | 19. Heading |
@@ -47,7 +48,7 @@ All observed Checklists are header row 1 with `Item No.`, `Item Name`, `Initial 
 
 Issue tables use header row 1. Read IDs from Item No., registered embedded-ID columns, validated child-ID sheet prefixes or exact registered sheet aliases. All available IDs must agree. Sitemap uses a leading ID in Sitemaps, whose full value is a finding label. URLs Example holds actual URL evidence: 11.7 X uses one URL per row; other sitemap checks may use newline-separated URLs or N/A where the producer permits no affected URL. Preserve original text and row counts. Only single-URL cells get native URL hyperlinks.
 
-Current content reports use X-only split sheets and a space after the filename range. Register 18. Descriptions - Missing as 18.1. Full Checklist coverage is required; non-X split detail tabs may be absent, but every X needs nonempty detail evidence. Retain support for existing combined layouts and underscore filenames. Reject overlapping tables, conflicting IDs and unmapped sheets. Optional-table behavior is limited to registered content layouts and the pagination/hreflang contracts below; all other topics retain their existing requirements. Record omitted tables distinctly from observed empty tables in provenance.
+Current content reports use X-only split sheets and a space after the filename range. Register 18. Descriptions - Missing as 18.1. Full Checklist coverage is required; non-X split detail tabs may be absent, but every X needs nonempty detail evidence. Retain support for existing combined layouts and underscore filenames. Reject overlapping tables, conflicting IDs and unmapped sheets. Optional-table behavior is limited to registered content layouts and the pagination, hreflang and robots meta tags contracts documented here; all other topics retain their existing requirements. Record omitted tables distinctly from observed empty tables in provenance.
 
 ## Destination contract
 
@@ -75,3 +76,13 @@ The real sample covers eight onsite reports, 37 check results and 1,086 problem-
 
 
 Pagination and hreflang always require complete selected Checklist coverage. Their registered producers create 14. Pagination or 15. HREFLANG only when at least one result is X. A Checklist-only report with no X is valid; preserve pass, N/A, Human check and other supported non-X statuses and all evidence limitations without reclassifying them. Record absent tables as omitted by producer contract, separately from observed header-only tables. Every X still requires nonempty correctly identified detail evidence. An absent or empty X table and missing Checklist rows remain errors. Existing registered combined-sheet aliases and populated-table validation remain unchanged. Zero recorded rows is not a confirmed issue count for Human check, N/A or unknown results.
+
+## Robots meta tags producer contract
+
+Use manifest topic robots_meta_tags_audit for all three IDs 12.1–12.3. Filename tokens onsite_robots_meta_tags_audit and robots_meta_tags_audit are explicitly registered; validate company, date and full range as usual. Checklist has Item No., Item Name, Check Result, Findings and Instruction. Require all three rows and nonblank names and narratives. Normalize existing status aliases to ✔, ✖ or Human check and retain raw spelling; 12.2 cannot be ✖. Unknown or incompatible results stop without reclassification.
+
+The combined source sheet 12. Robots meta tags is optional when there are no failures. If supplied, require Issue, URLs, How to Fix and one Status / Findings (reviewed YYYY-MM-DD) header whose valid date equals the source report date. Each populated row starts Issue with its check ID, supplies nonblank issue text and fix, has one valid site URL, and uses Pending implementation in the dated status cell. Only failed 12.1 or 12.3 checks may have rows. Every failed check requires its own evidence. Split sheets, missing headers, malformed or foreign URLs, conflicting IDs and unsupported statuses stop. A valid empty non-failure table is observed, not omitted. Keep source_schema robots-meta-tags-conditional-v1 in both cases.
+
+Discover destination Checklist rows by B IDs. In the pinned original template, 12.1–12.3 occupy rows 77–79; numeric floating-point 12.3 is normalized by the existing check-ID reader. Use existing 12. Robots meta tags: URLs maps to Address and Issue to Issues. No native field exists there for How to Fix or the dated status header; preserve their complete values in validation JSON, while Checklist F preserves the source check-level Instruction. Do not append fields or fabricate detail rows. Existing screenshots, notes, formulas and template limitations remain. Zero-row checks link to A3; populated checks link to their first mapped detail cell; A1 returns to Checklist B77 in this template. Verify discovered targets on other supported templates rather than hardcoding those coordinates.
+
+Preserve English source narratives and all original evidence, including Chinese source text, source report dates and historical crawl caveats. Generate consolidation annotations in English. Omission is not proof of zero defects: Human check retains an unconfirmed count. This adapter neither reruns audits nor adds GSC or canonical-route coverage.

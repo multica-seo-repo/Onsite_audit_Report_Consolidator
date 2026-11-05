@@ -23,7 +23,7 @@ python scripts/consolidate.py verify "本次 run folder/Autocheck_onsite_audit_C
 
 最终文件 `Autocheck_onsite_audit_{companyname}_{date}.xlsx` 与本次源报告放在同一 run folder，另附 `.validation.json` 校验记录。同名停止，不覆盖。ZIP、源报告和原模板保持不变。旧文件名需要逐文件明确启用兼容模式。
 
-目前包含 Robots、Sitemap、Pagination、Hreflang、Page titles、Meta descriptions、Headings 和 Images 的实际样本映射。17–20 支持合并和按子项拆分的来源详情表。HTTPS 目标表预留，首次真实输入需确认其 schema。未知格式由 agent 调整显式配置或增加测试过的 adapter；脚本不猜结果。
+Registered topics cover HTTPS, robots.txt, sitemap, robots meta tags 12.1–12.3, pagination, hreflang and content checks 17.1–20.2. Robots meta tags supports its Checklist-only non-failure contract and validated failure evidence. Content supports registered combined and child split layouts. See references/mapping.md for exact schemas, preserved template limits and unsupported-input errors. Generated consolidation annotations are English; original source evidence remains unchanged.
 
 ## 校验
 

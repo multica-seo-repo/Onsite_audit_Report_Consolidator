@@ -178,6 +178,7 @@ def read_run(manifest_path):
             raise ValueError(f'unknown/excluded topic (GSC is excluded): {topic_name}')
         topic = profile['topics'][topic_name]
         reader = topic.get('reader', {})
+        robots_meta = reader.get('schema') == 'robots-meta-tags-conditional-v1'
         ids = src.get('checks', topic['ids'])
         if not isinstance(ids,list) or any(str(i).startswith('7.') for i in ids):
             raise ValueError('invalid check list; GSC series 7 is excluded')
@@ -185,6 +186,8 @@ def read_run(manifest_path):
             raise ValueError('legacy_name must be a boolean')
         if len(set(ids)) != len(ids) or not set(ids).issubset(topic['ids']):
             raise ValueError('invalid/duplicate requested check coverage')
+        if robots_meta and set(ids) != set(topic['ids']):
+            raise ValueError('robots meta tags requires all three checks 12.1–12.3')
         p = relative_file(folder, src['file'])
         if p.name.startswith(('Autocheck_onsite_audit_', '~$')) or p.suffix.lower() != '.xlsx':
             raise ValueError(f'excluded source filename: {p.name}')
@@ -199,7 +202,7 @@ def read_run(manifest_path):
             raise ValueError(f'exactly one Checklist required in {p.name}')
         ws = names[0]
         hs = columns(ws)
-        cols = {k:alias_column(hs,v,k!='name') for k,v in profile['checklist_columns'].items()}
+        cols = {k:alias_column(hs,v,k!='name' or robots_meta) for k,v in profile['checklist_columns'].items()}
         local = {}
         for row in ws.iter_rows(min_row=2):
             if not any(c.value is not None for c in row):
@@ -216,6 +219,11 @@ def read_run(manifest_path):
             raw_status = str(val('status') or '').strip()
             if raw_status not in STATUS:
                 raise ValueError(f'unknown status {raw_status!r}: {p.name}/{ident}')
+            if robots_meta:
+                if STATUS[raw_status] not in {'✔', '✖', 'Human check'} or (ident == '12.2' and STATUS[raw_status] == '✖'):
+                    raise ValueError(f'unsupported robots meta tags status: {ident}/{raw_status}')
+                if any(not str(val(k) or '').strip() for k in ('name', 'findings', 'instruction')):
+                    raise ValueError(f'missing robots meta tags name/findings/instruction: {ident}')
             local[ident] = {'id':ident,'status':STATUS[raw_status],'raw_status':raw_status,'findings':str(val('findings') or ''),'instruction':str(val('instruction') or ''),'source_file':src['file'],'source_sheet':ws.title,'source_row':row[0].row,'source_date':src['date'],'topic':topic_name,'details':[]}
             local[ident]['source_check_name']=str(val('name') or row[cols['id']-1].value)
             mapped_cols=set(cols.values())
@@ -228,8 +236,10 @@ def read_run(manifest_path):
         for ds in w:
             if ds == ws:
                 continue
-            if not any(c.value is not None for row in ds for c in row):
+            if not any(c.value is not None for row in ds for c in row) and not (robots_meta and ds.title in topic['source_sheets']):
                 continue
+            if robots_meta and ds.title not in topic['source_sheets']:
+                raise ValueError(f'unmapped robots meta tags source sheet: {ds.title}')
             split_match = re.match(r'^(\d+\.\d+)(?=\s|$|[._-])', ds.title)
             split_id = split_match[1] if split_match else None
             alias_id = reader.get('sheet_aliases', {}).get(ds.title)
@@ -252,7 +262,7 @@ def read_run(manifest_path):
             dh = columns(ds)
             fields = {c.column:str(c.value) for c in ds[1] if c.value is not None}
             schema = reader.get('schema', 'legacy')
-            if reader.get('optional_nonfailed_details') and not split_id:
+            if reader.get('optional_nonfailed_details') and not split_id and not robots_meta:
                 schema = 'content-combined-legacy'
             if reader.get('variant_header') and norm(reader['variant_header']) not in dh:
                 schema = 'https-legacy'
@@ -268,6 +278,19 @@ def read_run(manifest_path):
                 raise ValueError(f'missing required detail column/field in {ds.title}: {sorted(missing_fields)}')
             if not any(canonical(h,profile,topic) in {'address','destination','sitemap'} for h in fields.values()):
                 raise ValueError(f'detail requires mapped URL column/header: {ds.title}')
+            if robots_meta:
+                for header in ('Issue', 'URLs', 'How to Fix'):
+                    alias_column(dh, [header], required=True)
+                mapped = [canonical(h, profile, topic) for h in fields.values()]
+                if len(mapped) != len(set(mapped)):
+                    raise ValueError('ambiguous robots meta tags detail column aliases')
+                dated = [h for h in dh if h.startswith('status / findings')]
+                if len(dated) != 1:
+                    raise ValueError('requires exactly one dated Status / Findings header')
+                match = re.fullmatch(r'status / findings \(reviewed (\d{4}-\d{2}-\d{2})\)', dated[0])
+                if not match or iso(match[1]) != src['date']:
+                    raise ValueError('dated status header must match source date')
+                status_col = dh[dated[0]]
             id_col = alias_column(dh, profile['field_aliases']['id'])
             issue_col = alias_column(dh, ['Issue','Issues'])
             embedded_cols = [dh[norm(h)] for h in reader.get('embedded_id_headers', []) if norm(h) in dh]
@@ -303,6 +326,17 @@ def read_run(manifest_path):
                 ident = identities[0]
                 if ident not in local or (split_id and ident!=split_id):
                     raise ValueError(f'detail check mismatch {ident} in {ds.title}')
+                if robots_meta:
+                    if ident not in {'12.1', '12.3'} or local[ident]['status'] != '✖':
+                        raise ValueError(f'robots meta tags details require a failed 12.1 or 12.3: {ident}')
+                    issue = str(row[dh[norm('Issue')]-1].value or '')
+                    remainder = re.sub(r'^\s*\d+\.\d+', '', issue).strip(' :—-\t\r\n')
+                    if not remainder or any(not str(row[dh[norm(h)]-1].value or '').strip() for h in ('URLs', 'How to Fix')):
+                        raise ValueError(f'missing required robots meta tags detail value: {ident}')
+                    if any(c in str(row[dh[norm('URLs')]-1].value) for c in ('\n', '\r')):
+                        raise ValueError('robots meta tags requires one URL per row')
+                    if row[status_col-1].value != 'Pending implementation':
+                        raise ValueError('robots meta tags status must be Pending implementation')
                 values = {h:row[col-1].value for col,h in fields.items()}
                 validated_urls = {}
                 for h,v in values.items():

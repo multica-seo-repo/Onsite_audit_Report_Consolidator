@@ -38,6 +38,11 @@
     "images_audit": [
       "address",
       "destination"
+    ],
+    "robots_meta_tags_audit": [
+      "address",
+      "issue",
+      "instruction"
     ]
   },
   "checklist_columns": {
@@ -329,6 +334,35 @@
         "schema": "content-split-v1",
         "optional_nonfailed_details": true,
         "sheet_aliases": {}
+      }
+    },
+    "robots_meta_tags_audit": {
+      "aliases": [
+        "onsite_robots_meta_tags_audit",
+        "robots_meta_tags_audit"
+      ],
+      "ids": [
+        "12.1",
+        "12.2",
+        "12.3"
+      ],
+      "source_sheets": [
+        "12. Robots meta tags"
+      ],
+      "targets": {
+        "12.1": "12. Robots meta tags",
+        "12.2": "12. Robots meta tags",
+        "12.3": "12. Robots meta tags"
+      },
+      "reader": {
+        "schema": "robots-meta-tags-conditional-v1",
+        "optional_nonfailed_details": true,
+        "embedded_id_headers": [
+          "Issue"
+        ],
+        "field_overrides": {
+          "URLs": "address"
+        }
       }
     }
   },

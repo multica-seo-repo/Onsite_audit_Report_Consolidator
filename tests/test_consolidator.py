@@ -374,7 +374,7 @@ class ConsolidationTests(unittest.TestCase):
         self.assertEqual(s['D8'].value,'Human check')
         self.assertEqual(s['D3'].value,'-')
         self.assertIn('Not checked',s['E3'].value)
-        self.assertIn('问题数量未确认',s['E8'].value)
+        self.assertIn('Issue count unconfirmed',s['E8'].value)
         human_rules=[v for v in s.data_validations.dataValidation if 'D8' in v.sqref]
         self.assertEqual(len(human_rules),1)
         self.assertIn('Human check',human_rules[0].formula1)
